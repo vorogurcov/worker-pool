@@ -74,10 +74,14 @@ func (d DataRepository) GetBulkData(ctx context.Context, dataKeys []string, keyN
 		return nil, nil
 	}
 
-	// Определяем имя колонки
-	col := "key"
-	if keyName == "other_key" {
-		col = "other_key"
+	// Валидация и определение имени колонки
+	validCols := map[string]string{
+		"key":       "key",
+		"other_key": "other_key",
+	}
+	col, ok := validCols[keyName]
+	if !ok {
+		return nil, fmt.Errorf("invalid column name: %s", keyName)
 	}
 
 	placeholders := make([]string, len(dataKeys))
