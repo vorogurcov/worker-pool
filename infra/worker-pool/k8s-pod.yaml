@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: worker-pool
+spec:
+  containers:
+    - image: worker-pool:0.0.2
+      name: worker-pool
+      ports:
+        - containerPort: 80

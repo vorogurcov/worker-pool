@@ -1,0 +1,17 @@
+FROM golang:1.25.1 AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o worker-pool ./cmd/main.go
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+
+COPY --from=builder /app/worker-pool .
+
+COPY --from=builder /app/cmd/.env ./cmd/.env
+
+RUN chmod +x worker-pool
+CMD ["./worker-pool"]
