@@ -10,8 +10,8 @@ import (
 )
 
 func main() {
-	keysFile := "keys.txt"
-	baseURL := "http://localhost:9999/v1/get?key="
+	keysFile := "data/keys.txt"
+	baseURL := "http://localhost:30099/v1/get?key="
 
 	file, err := os.Open(keysFile)
 	if err != nil {
@@ -20,7 +20,6 @@ func main() {
 	}
 	defer file.Close()
 
-	// Читаем все ключи в слайс
 	var keys []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -34,7 +33,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Рандомное перемешивание ключей
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(keys), func(i, j int) {
 		keys[i], keys[j] = keys[j], keys[i]
@@ -46,7 +44,6 @@ func main() {
 		fmt.Fprintf(out, "GET %s%s\n", baseURL, key)
 		count++
 
-		// Каждые 100 строк отправляем в Vegeta
 		if count%100 == 0 {
 			out.Flush()
 		}
