@@ -13,6 +13,9 @@ spec:
     metadata:
       labels:
         app: worker-pool
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9999"
     spec:
       containers:
         - name: worker-pool
