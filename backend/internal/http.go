@@ -8,6 +8,8 @@ import (
 )
 
 func NewHandleGetData(dataService *DataService, r *http.Request) domain.JobExecFunc {
+	route := "/v1/get"
+
 	return func() domain.Result {
 
 		if r.Method != http.MethodGet {
@@ -15,6 +17,7 @@ func NewHandleGetData(dataService *DataService, r *http.Request) domain.JobExecF
 				Status: 405,
 				Body:   nil,
 				Error:  fmt.Errorf("method not allowed"),
+				Path:   route,
 			}
 		}
 
@@ -35,6 +38,7 @@ func NewHandleGetData(dataService *DataService, r *http.Request) domain.JobExecF
 				Status: 400,
 				Body:   nil,
 				Error:  fmt.Errorf("missing key parameter"),
+				Path:   route,
 			}
 		}
 
@@ -44,6 +48,7 @@ func NewHandleGetData(dataService *DataService, r *http.Request) domain.JobExecF
 				Status: 500,
 				Body:   nil,
 				Error:  fmt.Errorf("error fetching data: %v", err),
+				Path:   route,
 			}
 		}
 
@@ -51,18 +56,22 @@ func NewHandleGetData(dataService *DataService, r *http.Request) domain.JobExecF
 			Status: 200,
 			Body:   data,
 			Error:  nil,
+			Path:   route,
 		}
 	}
 
 }
 
 func NewHandleGetBulkData(dataService *DataService, r *http.Request) domain.JobExecFunc {
+	route := "/v1/bulk"
+
 	return func() domain.Result {
 		if r.Method != http.MethodGet {
 			return domain.Result{
 				Status: 405,
 				Body:   nil,
 				Error:  fmt.Errorf("method not allowed"),
+				Path:   route,
 			}
 		}
 
@@ -80,6 +89,7 @@ func NewHandleGetBulkData(dataService *DataService, r *http.Request) domain.JobE
 				Status: 400,
 				Body:   nil,
 				Error:  fmt.Errorf("missing key parameter"),
+				Path:   route,
 			}
 		}
 		dataKeys := strings.Split(r.URL.Query().Get("data_keys"), ",")
@@ -90,6 +100,7 @@ func NewHandleGetBulkData(dataService *DataService, r *http.Request) domain.JobE
 				Status: 500,
 				Body:   nil,
 				Error:  fmt.Errorf("error fetching data"),
+				Path:   route,
 			}
 		}
 
@@ -97,6 +108,7 @@ func NewHandleGetBulkData(dataService *DataService, r *http.Request) domain.JobE
 			Status: 200,
 			Body:   data,
 			Error:  nil,
+			Path:   route,
 		}
 	}
 

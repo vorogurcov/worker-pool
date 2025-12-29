@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"sync/atomic"
 	"time"
 	"traceroute-optimised/internal"
 	"traceroute-optimised/internal/domain"
+	"traceroute-optimised/internal/metrics"
 
 	"github.com/joho/godotenv"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -20,33 +21,11 @@ var (
 	jobQueue   chan domain.Job
 	queueSize  = 30
 	jobCounter int64
-
-	// Метрика RPS (счётчик почти обработанных запросов)
-	rpsCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "Total number of HTTP requests successfully processed",
-		},
-		[]string{"path"},
-	)
-
-	// Метрика latency (гистограмма)
-	requestDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
-			Help:    "HTTP request latency in seconds",
-			Buckets: prometheus.ExponentialBuckets(0.001, 2, 15), // 1ms -> ~16s
-		},
-		[]string{"path"},
-	)
 )
 
-func init() {
-	prometheus.MustRegister(rpsCounter)
-	prometheus.MustRegister(requestDuration)
-}
-
 func main() {
+	m := metrics.NewMetrics()
+
 	jobQueue = make(chan domain.Job, queueSize)
 
 	for i := 0; i < workerCnt; i++ {
@@ -67,17 +46,11 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/v1/get", func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		enqueueJob(w, r, internal.NewHandleGetData(&dataService, r))
-		duration := time.Since(start).Seconds()
-		requestDuration.WithLabelValues("/v1/get").Observe(duration)
+		enqueueJob(w, r, internal.NewHandleGetData(&dataService, r), m)
 	})
 
 	mux.HandleFunc("/v1/bulk", func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		enqueueJob(w, r, internal.NewHandleGetBulkData(&dataService, r))
-		duration := time.Since(start).Seconds()
-		requestDuration.WithLabelValues("/v1/bulk").Observe(duration)
+		enqueueJob(w, r, internal.NewHandleGetBulkData(&dataService, r), m)
 	})
 
 	mux.Handle("/metrics", promhttp.Handler())
@@ -93,7 +66,7 @@ func main() {
 	}
 }
 
-func enqueueJob(w http.ResponseWriter, r *http.Request, exec domain.JobExecFunc) {
+func enqueueJob(w http.ResponseWriter, r *http.Request, exec domain.JobExecFunc, m *metrics.Metrics) {
 	jobID := atomic.AddInt64(&jobCounter, 1)
 	ctx := r.Context()
 
@@ -118,7 +91,8 @@ func enqueueJob(w http.ResponseWriter, r *http.Request, exec domain.JobExecFunc)
 			http.Error(w, res.Error.Error(), http.StatusInternalServerError)
 			return
 		}
-		rpsCounter.WithLabelValues(r.URL.Path).Inc()
+		m.IncRequest(res.Path, strconv.Itoa(res.Status))
+
 		writeJSON(w, res.Status, res.Body)
 	case <-ctx.Done():
 		http.Error(w, "request cancelled", http.StatusRequestTimeout)

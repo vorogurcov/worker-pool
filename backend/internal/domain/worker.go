@@ -14,6 +14,7 @@ type Job struct {
 
 type Result struct {
 	Status int
+	Path   string
 	Body   any
 	Error  error
 }
