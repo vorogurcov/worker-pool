@@ -28,10 +28,10 @@ func NewHandleGetData(dataService *DataService, r *http.Request) domain.JobExecF
 		var searchValue string
 
 		if dataKey != "" {
-			keyName = "key"
+			keyName = "product_id"
 			searchValue = dataKey
 		} else if dataOtherKey != "" {
-			keyName = "other_key"
+			keyName = "category_id"
 			searchValue = dataOtherKey
 		} else {
 			return domain.Result{
@@ -75,15 +75,15 @@ func NewHandleGetBulkData(dataService *DataService, r *http.Request) domain.JobE
 			}
 		}
 
-		key := r.URL.Query().Get("key")
-		otherKey := r.URL.Query().Get("other_key")
+		key := r.URL.Query().Get("product_id")
+		otherKey := r.URL.Query().Get("category_id")
 
 		var keyName string
 
 		if key != "" {
-			keyName = "key"
+			keyName = "product_id"
 		} else if otherKey != "" {
-			keyName = "other_key"
+			keyName = "category_id"
 		} else {
 			return domain.Result{
 				Status: 400,

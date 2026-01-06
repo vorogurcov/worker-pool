@@ -17,6 +17,6 @@ func (ds *DataService) GetBulkData(ctx context.Context, dataKeys []string, keyNa
 	return ds.DataRepo.GetBulkData(ctx, dataKeys, keyName)
 }
 
-func (ds *DataService) UpdateData(ctx context.Context, newData domain.DataModel, keyName string) (*domain.DataModel, error) {
-	return ds.DataRepo.UpdateData(ctx, newData, keyName)
-}
+//func (ds *DataService) UpdateData(ctx context.Context, newData domain.DataModel, keyName string) (*domain.DataModel, error) {
+//	return ds.DataRepo.UpdateData(ctx, newData, keyName)
+//}

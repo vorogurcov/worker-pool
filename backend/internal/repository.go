@@ -11,6 +11,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const (
+	primaryTableName   = "products"
+	secondaryTableName = "categories"
+)
+
 type DataRepository struct {
 	db *sql.DB
 }
@@ -41,31 +46,28 @@ func NewDataRepository() (*DataRepository, error) {
 }
 
 func (d DataRepository) GetData(ctx context.Context, dataKey string, keyName string) (*domain.DataModel, error) {
-	var query string
-	if keyName == "key" {
-		query = `
-        SELECT key, value
-        FROM data
-        WHERE key = $1
-    `
-	} else {
-		query = `
-        SELECT key, value
-        FROM data
-        WHERE other_key = $1
-    `
+
+	filterColumn := "category_id"
+	if keyName == "product_id" {
+		filterColumn = "product_id"
 	}
+
+	query := fmt.Sprintf(`
+        SELECT product_id, payload
+        FROM %s
+        WHERE %s = $1 AND is_active = true
+    `, primaryTableName, filterColumn)
 
 	var dataModel domain.DataModel
 
 	err := d.db.QueryRowContext(ctx, query, dataKey).
-		Scan(&dataModel.Key, &dataModel.Value)
+		Scan(&dataModel.ProductID, &dataModel.Payload)
 
 	if err != nil {
-		fmt.Println(dataModel)
-
-		return nil, err
+		// Вместо Println лучше использовать логгер или просто возвращать ошибку
+		return nil, fmt.Errorf("failed to get data: %w", err)
 	}
+
 	return &dataModel, nil
 }
 
@@ -74,10 +76,9 @@ func (d DataRepository) GetBulkData(ctx context.Context, dataKeys []string, keyN
 		return nil, nil
 	}
 
-	// Валидация и определение имени колонки
 	validCols := map[string]string{
-		"key":       "key",
-		"other_key": "other_key",
+		"product_id":  "product_id",
+		"category_id": "category_id",
 	}
 	col, ok := validCols[keyName]
 	if !ok {
@@ -92,59 +93,60 @@ func (d DataRepository) GetBulkData(ctx context.Context, dataKeys []string, keyN
 	}
 
 	query := fmt.Sprintf(`
-        SELECT key, value
-        FROM data
-        WHERE %s IN (%s)
-    `, col, strings.Join(placeholders, ","))
+        SELECT product_id, payload
+        FROM %s
+        WHERE %s IN (%s) AND is_active = true
+    `, primaryTableName, col, strings.Join(placeholders, ","))
 
-	// Выполняем запрос
 	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	defer rows.Close()
 
-	var results []domain.DataModel
+	results := make([]domain.DataModel, 0, len(dataKeys))
+
 	for rows.Next() {
 		var m domain.DataModel
-		if err := rows.Scan(&m.Key, &m.Value); err != nil {
-			return nil, err
+		if err := rows.Scan(&m.ProductID, &m.Payload); err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
 		}
 		results = append(results, m)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
 	return &results, nil
 }
 
-func (d DataRepository) UpdateData(ctx context.Context, newData domain.DataModel, keyName string) (*domain.DataModel, error) {
-	var query string
-	if keyName == "key" {
-		query = `
-        UPDATE data
-        SET value = $1
-        WHERE key = $2
-        RETURNING key, value
-    `
-	} else {
-		query = `
-        UPDATE data
-        SET value = $1
-        WHERE other_key = $2
-        RETURNING key, value
-    `
-	}
-
-	var dm domain.DataModel
-
-	err := d.db.QueryRowContext(ctx, query, newData.Value, newData.Key).
-		Scan(&dm.Key, &dm.Value)
-	if err != nil {
-		return nil, err
-	}
-
-	return &dm, nil
-}
+//
+//func (d DataRepository) UpdateData(ctx context.Context, newData domain.DataModel, keyName string) (*domain.DataModel, error) {
+//	var query string
+//	if keyName == "key" {
+//		query = `
+//        UPDATE data
+//        SET value = $1
+//        WHERE key = $2
+//        RETURNING key, value
+//    `
+//	} else {
+//		query = `
+//        UPDATE data
+//        SET value = $1
+//        WHERE other_key = $2
+//        RETURNING key, value
+//    `
+//	}
+//
+//	var dm domain.DataModel
+//
+//	err := d.db.QueryRowContext(ctx, query, newData.Value, newData.Key).
+//		Scan(&dm.Key, &dm.Value)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return &dm, nil
+//}
